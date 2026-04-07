@@ -8,6 +8,7 @@ import TabBar from './components/layout/TabBar'
 import FAB from './components/layout/FAB'
 import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
+import WorkoutSession from './pages/WorkoutSession'
 
 // Stub pages — will be replaced in later tasks
 function Today() {
@@ -21,9 +22,6 @@ function Progress() {
 }
 function ProfilePage() {
   return <div className="min-h-screen bg-bg-primary p-4 pb-28 pt-14"><h1 className="text-text-primary text-2xl font-bold">Profile</h1></div>
-}
-function WorkoutSession() {
-  return <div className="min-h-screen bg-bg-primary p-4"><h1 className="text-text-primary text-2xl font-bold">Workout Session (coming soon)</h1></div>
 }
 
 const queryClient = new QueryClient()
