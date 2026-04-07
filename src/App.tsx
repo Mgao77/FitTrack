@@ -9,6 +9,7 @@ import FAB from './components/layout/FAB'
 import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import WorkoutSession from './pages/WorkoutSession'
+import MealLogger from './components/nutrition/MealLogger'
 
 // Stub pages — will be replaced in later tasks
 function Today() {
@@ -29,7 +30,7 @@ const queryClient = new QueryClient()
 function AppRoutes() {
   const { user } = useAuth()
   const { isOnboardingComplete } = useProfile()
-  const [_showMealLogger, setShowMealLogger] = useState(false)
+  const [showMealLogger, setShowMealLogger] = useState(false)
   const [_showWorkoutPicker, setShowWorkoutPicker] = useState(false)
 
   const showLayout = user && isOnboardingComplete
@@ -60,6 +61,9 @@ function AppRoutes() {
             onLogMeal={() => setShowMealLogger(true)}
             onStartWorkout={() => setShowWorkoutPicker(true)}
           />
+          {showMealLogger && (
+            <MealLogger onClose={() => setShowMealLogger(false)} />
+          )}
         </>
       )}
     </>
