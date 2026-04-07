@@ -15,21 +15,10 @@ export default function ExerciseView({ exercise, currentSet, onSwap }: ExerciseV
     let cancelled = false
     async function fetchVideo() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/youtube-search`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ query: exercise.youtubeSearchQuery }),
-          }
-        )
-        const { videoId } = await res.json()
-        if (!cancelled && videoId) setVideoId(videoId)
+        const { data, error } = await supabase.functions.invoke('youtube-search', {
+          body: { query: exercise.youtubeSearchQuery },
+        })
+        if (!error && data?.videoId && !cancelled) setVideoId(data.videoId)
       } catch {
         // Non-critical — no video just means no demo shown
       }

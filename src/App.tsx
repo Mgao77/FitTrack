@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useAuth } from './hooks/useAuth'
@@ -58,8 +58,10 @@ function FABContainer() {
 function AppRoutes() {
   const { user } = useAuth()
   const { isOnboardingComplete } = useProfile()
+  const location = useLocation()
 
-  const showLayout = user && isOnboardingComplete
+  const isShellRoute = !['/auth', '/onboarding'].includes(location.pathname)
+  const showLayout = user && isOnboardingComplete && isShellRoute
 
   return (
     <>

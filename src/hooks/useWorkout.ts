@@ -31,24 +31,11 @@ export function useWorkout() {
       muscleRecovery: unknown
       progressiveOverload: unknown
     }): Promise<GeneratedWorkout> => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-workout`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        }
-      )
-      if (!response.ok) {
-        const err = await response.text().catch(() => 'unknown error')
-        throw new Error(`Workout generation failed: ${err}`)
-      }
-      return response.json()
+      const { data, error } = await supabase.functions.invoke('generate-workout', {
+        body: payload,
+      })
+      if (error) throw new Error(`Workout generation failed: ${error.message}`)
+      return data as GeneratedWorkout
     },
   })
 

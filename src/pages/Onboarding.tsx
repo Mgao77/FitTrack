@@ -5,15 +5,23 @@ import OptionCard from '../components/onboarding/OptionCard'
 import EquipmentPicker from '../components/onboarding/EquipmentPicker'
 import PlanCreationAnimation from '../components/onboarding/PlanCreationAnimation'
 import { useProfile } from '../hooks/useProfile'
+import { useWorkout } from '../hooks/useWorkout'
+import { useMuscleFatigue } from '../hooks/useMuscleFatigue'
+import { useProgressiveOverload } from '../hooks/useProgressiveOverload'
+import type { GeneratedWorkout } from '../types'
 
 const TOTAL = 10
 
 export default function Onboarding() {
   const navigate = useNavigate()
   const { updateProfile } = useProfile()
+  const { generateWorkout } = useWorkout()
+  const { recoveryMap } = useMuscleFatigue()
+  const { overloadData } = useProgressiveOverload()
 
   const [step, setStep] = useState(1)
   const [creating, setCreating] = useState(false)
+  const [generatedWorkout, setGeneratedWorkout] = useState<GeneratedWorkout | null>(null)
 
   // Form state
   const [name, setName] = useState('')
@@ -36,32 +44,51 @@ export default function Onboarding() {
 
   async function handleFinish() {
     setCreating(true)
+    const profile = {
+      display_name: name.trim() || 'Friend',
+      age: age ? parseInt(age) : null,
+      gender: gender || null,
+      height_cm: height ? parseFloat(height) : null,
+      weight_kg: weight ? parseFloat(weight) : null,
+      unit_preference: unitPref,
+      experience_level: experience || null,
+      workout_frequency: frequency,
+      workout_environment: (environment as 'commercial_gym' | 'home' | 'outdoor' | 'bodyweight') || null,
+      equipment,
+      goals: goals.length ? { primary: goals[0], secondary: goals.slice(1) } : null,
+      workout_preferences: preferences,
+      injuries,
+      dietary_restrictions: dietary,
+      sports: [],
+      foods_to_avoid: [],
+    }
     try {
-      await updateProfile.mutateAsync({
-        display_name: name.trim() || 'Friend',
-        age: age ? parseInt(age) : null,
-        gender: gender || null,
-        height_cm: height ? parseFloat(height) : null,
-        weight_kg: weight ? parseFloat(weight) : null,
-        unit_preference: unitPref,
-        experience_level: experience || null,
-        workout_frequency: frequency,
-        workout_environment: (environment as 'commercial_gym' | 'home' | 'outdoor' | 'bodyweight') || null,
-        equipment,
-        goals: goals.length ? { primary: goals[0], secondary: goals.slice(1) } : null,
-        workout_preferences: preferences,
-        injuries,
-        dietary_restrictions: dietary,
-        sports: [],
-        foods_to_avoid: [],
+      await updateProfile.mutateAsync(profile)
+      // Generate first workout concurrently with the animation
+      const workout = await generateWorkout.mutateAsync({
+        profile,
+        muscleRecovery: recoveryMap,
+        progressiveOverload: overloadData,
       })
+      setGeneratedWorkout(workout)
     } catch (e) {
-      console.error('Failed to save profile:', e)
+      console.error('Failed during onboarding finish:', e)
+      // Navigate to Today even if workout generation fails — user can retry there
     }
   }
 
   if (creating) {
-    return <PlanCreationAnimation onComplete={() => navigate('/')} />
+    return (
+      <PlanCreationAnimation
+        onComplete={() => {
+          if (generatedWorkout) {
+            navigate('/workout/session', { state: { workout: generatedWorkout } })
+          } else {
+            navigate('/')
+          }
+        }}
+      />
+    )
   }
 
   // Step 1: Welcome

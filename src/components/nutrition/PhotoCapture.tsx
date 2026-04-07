@@ -3,6 +3,8 @@ import { Camera } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import type { ClaudeVisionFoodItem } from '../../types'
 
+
+
 interface PhotoCaptureProps {
   onIdentified: (items: ClaudeVisionFoodItem[]) => void
 }
@@ -25,23 +27,11 @@ export default function PhotoCapture({ onIdentified }: PhotoCaptureProps) {
       const base64 = btoa(binary)
       const mediaType = (file.type as 'image/jpeg' | 'image/png' | 'image/webp') || 'image/jpeg'
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-meal-photo`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ imageBase64: base64, mediaType }),
-        }
-      )
-
-      if (!res.ok) throw new Error('Analysis failed')
-      const items: ClaudeVisionFoodItem[] = await res.json()
+      const { data, error } = await supabase.functions.invoke('analyze-meal-photo', {
+        body: { imageBase64: base64, mediaType },
+      })
+      if (error) throw new Error('Analysis failed')
+      const items: ClaudeVisionFoodItem[] = data
       onIdentified(items)
     } catch (e) {
       setError('Failed to analyze photo. Please try again or add foods manually.')
