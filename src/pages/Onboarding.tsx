@@ -49,6 +49,7 @@ export default function Onboarding() {
         workout_environment: (environment as 'commercial_gym' | 'home' | 'outdoor' | 'bodyweight') || null,
         equipment,
         goals: goals.length ? { primary: goals[0], secondary: goals.slice(1) } : null,
+        workout_preferences: preferences,
         injuries,
         dietary_restrictions: dietary,
         sports: [],
