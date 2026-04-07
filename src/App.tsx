@@ -10,20 +10,10 @@ import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import WorkoutSession from './pages/WorkoutSession'
 import MealLogger from './components/nutrition/MealLogger'
-
-// Stub pages — will be replaced in later tasks
-function Today() {
-  return <div className="min-h-screen bg-bg-primary p-4 pb-28 pt-14"><h1 className="text-text-primary text-2xl font-bold">Today</h1></div>
-}
-function Plan() {
-  return <div className="min-h-screen bg-bg-primary p-4 pb-28 pt-14"><h1 className="text-text-primary text-2xl font-bold">Plan</h1></div>
-}
-function Progress() {
-  return <div className="min-h-screen bg-bg-primary p-4 pb-28 pt-14"><h1 className="text-text-primary text-2xl font-bold">Progress</h1></div>
-}
-function ProfilePage() {
-  return <div className="min-h-screen bg-bg-primary p-4 pb-28 pt-14"><h1 className="text-text-primary text-2xl font-bold">Profile</h1></div>
-}
+import Today from './pages/Today'
+import Plan from './pages/Plan'
+import Progress from './pages/Progress'
+import Profile from './pages/Profile'
 
 const queryClient = new QueryClient()
 
@@ -49,7 +39,7 @@ function AppRoutes() {
         } />
         <Route path="/plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
         <Route path="/progress" element={<ProtectedRoute><Progress /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/workout/session" element={<ProtectedRoute><WorkoutSession /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
