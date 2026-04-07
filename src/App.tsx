@@ -1,8 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
+import { useWorkout } from './hooks/useWorkout'
+import { useMuscleFatigue } from './hooks/useMuscleFatigue'
+import { useProgressiveOverload } from './hooks/useProgressiveOverload'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import TabBar from './components/layout/TabBar'
 import FAB from './components/layout/FAB'
@@ -17,11 +20,44 @@ import Profile from './pages/Profile'
 
 const queryClient = new QueryClient()
 
+function FABContainer() {
+  const navigate = useNavigate()
+  const { profile } = useProfile()
+  const { recoveryMap } = useMuscleFatigue()
+  const { overloadData } = useProgressiveOverload()
+  const { generateWorkout } = useWorkout()
+  const [showMealLogger, setShowMealLogger] = useState(false)
+
+  async function handleStartWorkout() {
+    try {
+      const workout = await generateWorkout.mutateAsync({
+        profile,
+        muscleRecovery: recoveryMap,
+        progressiveOverload: overloadData,
+      })
+      navigate('/workout/session', { state: { workout } })
+    } catch {
+      // error handled by mutation state
+    }
+  }
+
+  return (
+    <>
+      <FAB
+        onLogMeal={() => setShowMealLogger(true)}
+        onStartWorkout={handleStartWorkout}
+        generating={generateWorkout.isPending}
+      />
+      {showMealLogger && (
+        <MealLogger onClose={() => setShowMealLogger(false)} />
+      )}
+    </>
+  )
+}
+
 function AppRoutes() {
   const { user } = useAuth()
   const { isOnboardingComplete } = useProfile()
-  const [showMealLogger, setShowMealLogger] = useState(false)
-  const [_showWorkoutPicker, setShowWorkoutPicker] = useState(false)
 
   const showLayout = user && isOnboardingComplete
 
@@ -47,13 +83,7 @@ function AppRoutes() {
       {showLayout && (
         <>
           <TabBar />
-          <FAB
-            onLogMeal={() => setShowMealLogger(true)}
-            onStartWorkout={() => setShowWorkoutPicker(true)}
-          />
-          {showMealLogger && (
-            <MealLogger onClose={() => setShowMealLogger(false)} />
-          )}
+          <FABContainer />
         </>
       )}
     </>

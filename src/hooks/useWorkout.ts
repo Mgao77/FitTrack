@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
@@ -7,7 +6,6 @@ import type { GeneratedWorkout, Workout, LoggedSetData } from '../types'
 export function useWorkout() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [currentWorkout, setCurrentWorkout] = useState<GeneratedWorkout | null>(null)
 
   const { data: todayWorkout } = useQuery({
     queryKey: ['today_workout', user?.id],
@@ -32,23 +30,25 @@ export function useWorkout() {
       profile: unknown
       muscleRecovery: unknown
       progressiveOverload: unknown
-    }) => {
+    }): Promise<GeneratedWorkout> => {
       const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-workout`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${session!.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(payload),
         }
       )
-      if (!response.ok) throw new Error('Failed to generate workout')
-      const workout: GeneratedWorkout = await response.json()
-      setCurrentWorkout(workout)
-      return workout
+      if (!response.ok) {
+        const err = await response.text().catch(() => 'unknown error')
+        throw new Error(`Workout generation failed: ${err}`)
+      }
+      return response.json()
     },
   })
 
@@ -115,5 +115,5 @@ export function useWorkout() {
     },
   })
 
-  return { currentWorkout, setCurrentWorkout, todayWorkout, generateWorkout, saveWorkout }
+  return { todayWorkout, generateWorkout, saveWorkout }
 }

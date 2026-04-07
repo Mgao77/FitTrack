@@ -165,20 +165,20 @@ ALTER TABLE daily_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE streaks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE achievements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "own_profile" ON profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY IF NOT EXISTS "own_muscle_fatigue" ON muscle_fatigue FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_workouts" ON workouts FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_exercise_logs" ON exercise_logs FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_progressive_overload" ON progressive_overload FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_meals" ON meals FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_meal_items" ON meal_items FOR ALL USING (
+CREATE POLICY "own_profile" ON profiles FOR ALL USING (auth.uid() = id);
+CREATE POLICY "own_muscle_fatigue" ON muscle_fatigue FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_workouts" ON workouts FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_exercise_logs" ON exercise_logs FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_progressive_overload" ON progressive_overload FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_meals" ON meals FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_meal_items" ON meal_items FOR ALL USING (
   auth.uid() = (SELECT user_id FROM meals WHERE id = meal_id)
 );
-CREATE POLICY IF NOT EXISTS "own_frequent_meals" ON frequent_meals FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_weight_log" ON weight_log FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_daily_targets" ON daily_targets FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_streaks" ON streaks FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY IF NOT EXISTS "own_achievements" ON achievements FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_frequent_meals" ON frequent_meals FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_weight_log" ON weight_log FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_daily_targets" ON daily_targets FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_streaks" ON streaks FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_achievements" ON achievements FOR ALL USING (auth.uid() = user_id);
 
 -- Trigger to auto-create profile on signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()

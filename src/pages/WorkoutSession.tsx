@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import ExerciseView from '../components/workout/ExerciseView'
 import SetLogger from '../components/workout/SetLogger'
 import RestTimer from '../components/workout/RestTimer'
@@ -7,13 +7,15 @@ import PostWorkoutSummary from '../components/workout/PostWorkoutSummary'
 import { useWorkout } from '../hooks/useWorkout'
 import { useMuscleFatigue } from '../hooks/useMuscleFatigue'
 import { useProgressiveOverload } from '../hooks/useProgressiveOverload'
-import type { LoggedSetData, MuscleGroup } from '../types'
+import type { GeneratedWorkout, LoggedSetData, MuscleGroup } from '../types'
 
 type Phase = 'exercise' | 'logging' | 'rest' | 'summary'
 
 export default function WorkoutSession() {
   const navigate = useNavigate()
-  const { currentWorkout, saveWorkout } = useWorkout()
+  const location = useLocation()
+  const currentWorkout = (location.state as { workout?: GeneratedWorkout } | null)?.workout ?? null
+  const { saveWorkout } = useWorkout()
   const { updateFatigue } = useMuscleFatigue()
   const { recordSet } = useProgressiveOverload()
 

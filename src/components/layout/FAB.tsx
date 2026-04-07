@@ -5,14 +5,15 @@ import { Plus, UtensilsCrossed, Dumbbell } from 'lucide-react'
 interface FABProps {
   onLogMeal: () => void
   onStartWorkout: () => void
+  generating?: boolean
 }
 
-export default function FAB({ onLogMeal, onStartWorkout }: FABProps) {
+export default function FAB({ onLogMeal, onStartWorkout, generating }: FABProps) {
   const [open, setOpen] = useState(false)
 
   const options = [
     { label: 'Log Meal', icon: UtensilsCrossed, action: onLogMeal },
-    { label: 'Start Workout', icon: Dumbbell, action: onStartWorkout },
+    { label: generating ? 'Generating...' : 'Start Workout', icon: Dumbbell, action: onStartWorkout },
   ]
 
   return (

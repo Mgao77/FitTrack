@@ -1,11 +1,9 @@
-// src/pages/Today.tsx
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useWorkout } from '../hooks/useWorkout'
 import { useMuscleFatigue } from '../hooks/useMuscleFatigue'
 import { useProgressiveOverload } from '../hooks/useProgressiveOverload'
 import { useMeals } from '../hooks/useMeals'
-import WorkoutCard from '../components/workout/WorkoutCard'
 import MacroDisplay from '../components/nutrition/MacroDisplay'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import Card from '../components/ui/Card'
@@ -23,20 +21,22 @@ export default function Today() {
   const { profile } = useProfile()
   const { recoveryMap, isLoading: fatigueLoading } = useMuscleFatigue()
   const { overloadData } = useProgressiveOverload()
-  const { currentWorkout, generateWorkout, todayWorkout } = useWorkout()
+  const { generateWorkout, todayWorkout } = useWorkout()
   const { meals, dailyTotals } = useMeals()
 
   const targets = profile ? calculateCaloriesFromProfile(profile) : null
 
-  async function handleStartWorkout() {
-    if (!profile || !currentWorkout) {
-      await generateWorkout.mutateAsync({
+  async function handleGenerate() {
+    try {
+      const workout = await generateWorkout.mutateAsync({
         profile,
         muscleRecovery: recoveryMap,
         progressiveOverload: overloadData,
       })
+      navigate('/workout/session', { state: { workout } })
+    } catch (e) {
+      // error shown via generateWorkout.error
     }
-    navigate('/workout/session')
   }
 
   return (
@@ -56,27 +56,37 @@ export default function Today() {
         {/* Today's Workout */}
         {fatigueLoading ? (
           <SkeletonCard lines={4} />
-        ) : currentWorkout ? (
-          <WorkoutCard
-            workout={currentWorkout}
-            onStart={handleStartWorkout}
-            completed={!!todayWorkout}
-          />
         ) : (
           <Card>
             <h2 className="text-text-primary text-lg font-bold mb-2">Today's Workout</h2>
-            <p className="text-text-secondary text-sm mb-4">
-              {recoveryMap.filter((m) => m.status === 'recovered').length} muscle groups are fully recovered
-            </p>
-            <button
-              onClick={() => generateWorkout.mutate({
-                profile, muscleRecovery: recoveryMap, progressiveOverload: overloadData
-              })}
-              disabled={generateWorkout.isPending}
-              className="w-full bg-accent-red text-white font-semibold py-3 rounded-xl disabled:opacity-50"
-            >
-              {generateWorkout.isPending ? 'Generating...' : 'Generate Workout'}
-            </button>
+
+            {todayWorkout ? (
+              <div className="flex items-center gap-3 py-2">
+                <span className="text-2xl">✅</span>
+                <div>
+                  <p className="text-text-primary font-semibold">{todayWorkout.workout_name}</p>
+                  <p className="text-text-secondary text-sm">Completed today</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-text-secondary text-sm mb-4">
+                  {recoveryMap.filter((m) => m.status === 'recovered').length} muscle groups fully recovered
+                </p>
+                {generateWorkout.error && (
+                  <p className="text-red-400 text-sm mb-3 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
+                    {(generateWorkout.error as Error).message}
+                  </p>
+                )}
+                <button
+                  onClick={handleGenerate}
+                  disabled={generateWorkout.isPending}
+                  className="w-full bg-accent-red text-white font-semibold py-3 rounded-xl disabled:opacity-50"
+                >
+                  {generateWorkout.isPending ? 'Generating...' : 'Generate Workout'}
+                </button>
+              </>
+            )}
           </Card>
         )}
 
@@ -99,7 +109,7 @@ export default function Today() {
           </Card>
         )}
 
-        {/* Meals logged */}
+        {/* Meals logged today */}
         {meals.length > 0 && (
           <Card>
             <h2 className="text-text-primary font-bold mb-3">Meals Today</h2>
