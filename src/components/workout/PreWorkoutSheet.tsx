@@ -6,6 +6,7 @@ import { useWorkout } from '../../hooks/useWorkout'
 import { useMuscleFatigue } from '../../hooks/useMuscleFatigue'
 import { useProgressiveOverload } from '../../hooks/useProgressiveOverload'
 import { useProfile } from '../../hooks/useProfile'
+import { useWorkoutSuggestion } from '../../hooks/useWorkoutSuggestion'
 import {
   MOVEMENT_PATTERNS,
   BODY_PARTS,
@@ -15,15 +16,13 @@ import {
   type BodyPart,
 } from '../../lib/workoutTargets'
 
-// ── Program type (stub — no program system yet) ───────────────────────────────
 interface ActiveProgram {
   suggestion: MovementPattern
-  label: string // e.g. "Push - Week 3 Day 2"
+  label: string
 }
 
 interface PreWorkoutSheetProps {
   onClose: () => void
-  program?: ActiveProgram | null // pass when program system is built
 }
 
 // ── Chip ──────────────────────────────────────────────────────────────────────
@@ -66,20 +65,20 @@ function ConflictDialog({
     <div className="absolute inset-0 z-10 flex items-center justify-center px-6 bg-black/50 rounded-t-3xl">
       <div className="bg-bg-elevated border border-border rounded-2xl p-5 w-full space-y-4">
         <p className="text-text-primary font-semibold text-base leading-snug">
-          Your program suggests{' '}
-          <span className="text-accent-red">{program.suggestion}</span> today,
+          Your last session suggests{' '}
+          <span className="text-accent-red">{program.suggestion}</span> is next,
           but you picked{' '}
-          <span className="text-accent-red">{userLabel}</span>. Switch for today?
+          <span className="text-accent-red">{userLabel}</span>. Go with your pick?
         </p>
         <p className="text-text-tertiary text-xs">
-          This is a one-day deviation. Your program continues as scheduled tomorrow.
+          "Stick to rotation" uses the suggested session instead.
         </p>
         <div className="flex gap-2">
           <button
             onClick={onStickToProgram}
             className="flex-1 py-2.5 rounded-xl border border-border text-text-primary text-sm font-medium active:opacity-70"
           >
-            Stick to program
+            Stick to rotation
           </button>
           <button
             onClick={onSwitchForToday}
@@ -94,12 +93,18 @@ function ConflictDialog({
 }
 
 // ── Main sheet ────────────────────────────────────────────────────────────────
-export default function PreWorkoutSheet({ onClose, program = null }: PreWorkoutSheetProps) {
+export default function PreWorkoutSheet({ onClose }: PreWorkoutSheetProps) {
   const navigate = useNavigate()
   const { profile } = useProfile()
   const { recoveryMap } = useMuscleFatigue()
   const { overloadData } = useProgressiveOverload()
   const { generateWorkout, recentExercises } = useWorkout()
+  const suggestion = useWorkoutSuggestion()
+
+  // Treat the derived suggestion as the active "program" for conflict detection
+  const program: ActiveProgram | null = suggestion
+    ? { suggestion: suggestion.suggestion, label: suggestion.label }
+    : null
 
   const [patternPick, setPatternPick] = useState<MovementPattern | null>(null)
   const [bodyPartPicks, setBodyPartPicks] = useState<BodyPart[]>([])
@@ -207,12 +212,12 @@ export default function PreWorkoutSheet({ onClose, program = null }: PreWorkoutS
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-5">
-          {/* Program suggestion row — only shown when a program is active */}
+          {/* Suggestion row — shown when history reveals a natural next session */}
           {program && (
             <div className="flex items-center justify-between bg-bg-card border border-border rounded-2xl px-4 py-3">
               <p className="text-text-secondary text-sm">
-                Your program suggests{' '}
-                <span className="text-text-primary font-semibold">{program.suggestion}</span> today.
+                Based on your last session,{' '}
+                <span className="text-text-primary font-semibold">{program.suggestion}</span> is up next.
               </p>
               <button
                 onClick={useProgramSuggestion}
