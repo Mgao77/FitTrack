@@ -64,6 +64,12 @@ export default function Onboarding() {
     }
     try {
       await updateProfile.mutateAsync(profile)
+    } catch (e) {
+      console.error('Failed to save profile:', e)
+      setCreating(false) // let user retry from the last step
+      return
+    }
+    try {
       // Generate first workout concurrently with the animation
       const workout = await generateWorkout.mutateAsync({
         profile,
@@ -72,14 +78,16 @@ export default function Onboarding() {
       })
       setGeneratedWorkout(workout)
     } catch (e) {
-      console.error('Failed during onboarding finish:', e)
-      // Navigate to Today even if workout generation fails — user can retry there
+      console.error('Failed to generate first workout:', e)
+      // generateWorkout.isError becomes true — PlanCreationAnimation shows "Continue →"
     }
   }
 
   if (creating) {
     return (
       <PlanCreationAnimation
+        isWorkoutReady={generatedWorkout !== null}
+        hasError={generateWorkout.isError}
         onComplete={() => {
           if (generatedWorkout) {
             navigate('/workout/session', { state: { workout: generatedWorkout } })

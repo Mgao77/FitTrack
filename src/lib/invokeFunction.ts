@@ -1,38 +1,34 @@
 import { supabase } from './supabase'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
-const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
+/**
+ * Calls a Supabase Edge Function and returns the parsed JSON response.
+ * Uses supabase.functions.invoke() so the SDK handles the new sb_publishable_
+ * key format and automatic token refresh correctly.
+ */
 export async function invokeFunction<T>(
   name: string,
   body: unknown,
-  signal?: AbortSignal
 ): Promise<T> {
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token ?? ANON_KEY
-
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'apikey': ANON_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-    signal: signal ?? AbortSignal.timeout(30000),
+  const { data, error } = await supabase.functions.invoke<T>(name, {
+    body: body as Record<string, unknown>,
   })
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText)
-    // Parse JSON error bodies and extract the message field
-    try {
-      const json = JSON.parse(text)
-      throw new Error(json.error ?? json.message ?? text)
-    } catch (parseErr) {
-      if (parseErr instanceof SyntaxError) throw new Error(text)
-      throw parseErr
+  if (error) {
+    // FunctionsHttpError carries the raw Response in .context — extract the JSON
+    // message the edge function actually returned instead of the generic SDK text.
+    if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+      try {
+        const json = await error.context.clone().json()
+        throw new Error(json?.error ?? json?.message ?? error.message)
+      } catch (inner) {
+        // If json() itself throws (body already consumed, non-JSON body), fall through
+        if (inner instanceof SyntaxError) throw new Error(error.message)
+        throw inner
+      }
     }
+    throw new Error(error.message ?? String(error))
   }
 
-  return res.json()
+  return data as T
 }

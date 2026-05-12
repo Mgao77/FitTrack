@@ -71,7 +71,7 @@ export default function ExerciseView({ exercise, currentSet, onSwap }: ExerciseV
         </div>
       )}
 
-      {onSwap && exercise.alternatives.length > 0 && (
+      {onSwap && (exercise.alternatives?.length ?? 0) > 0 && (
         <button onClick={onSwap} className="text-accent-blue text-sm w-full text-center py-2">
           Swap exercise →
         </button>

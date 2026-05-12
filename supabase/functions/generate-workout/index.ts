@@ -44,9 +44,10 @@ PROGRESSIVE OVERLOAD:
 
 EXERCISE SELECTION:
 - Include MET values for each exercise for calorie calculations
-- Always include 8 alternative exercises per movement targeting the SAME primary muscle group
+- CRITICAL: You MUST include EXACTLY 8 alternatives for EVERY exercise. No exceptions. Count them before finishing.
+- Alternatives target the SAME primary muscle group as the main exercise
 - Vary alternatives across equipment: barbell, dumbbell, cable, machine, bodyweight, resistance band
-- Example chest alternatives: barbell bench press, incline dumbbell press, cable flyes, pec deck, smith machine press, push-ups, dips, dumbbell flyes
+- Example for a chest exercise: ["Barbell Bench Press","Incline Dumbbell Press","Cable Fly","Pec Deck Machine","Smith Machine Press","Push-Ups","Dips","Dumbbell Fly"]
 - Alternatives must be compatible with available equipment
 - Return ONLY valid JSON. No explanation, no markdown, no code blocks.
 
@@ -138,7 +139,13 @@ ${avoidList.length > 0 ? `EXERCISES TO AVOID (performed recently — use alterna
         { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
-    const workout = JSON.parse(jsonMatch[0])
+    let workout
+    try {
+      workout = JSON.parse(jsonMatch[0])
+    } catch {
+      return new Response(JSON.stringify({ error: 'AI returned incomplete JSON. Please try again.' }),
+        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+    }
     return new Response(JSON.stringify(workout),
       { headers: { ...CORS, 'Content-Type': 'application/json' } })
   } catch (err) {

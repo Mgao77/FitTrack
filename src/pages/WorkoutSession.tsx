@@ -433,7 +433,7 @@ export default function WorkoutSession() {
       updated[swappingIndex] = {
         ...original,
         name: alt.name,
-        alternatives: original.alternatives.filter((a) => a.name !== alt.name),
+        alternatives: (original.alternatives ?? []).filter((a) => a.name !== alt.name),
         youtubeSearchQuery: `${alt.name} exercise form technique`,
       }
       return { ...prev, exercises: updated }
@@ -555,7 +555,7 @@ export default function WorkoutSession() {
           <div className="relative">
             <button
               onClick={() => setShowOptions((v) => !v)}
-              className="text-text-secondary text-lg w-8 h-8 flex items-center justify-center"
+              className="text-text-secondary text-lg w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg-elevated active:opacity-60 transition-colors"
               aria-label="Options"
             >
               ···
@@ -583,7 +583,7 @@ export default function WorkoutSession() {
           </div>
           <button
             onClick={() => navigate('/', { replace: true })}
-            className="text-text-secondary text-lg w-8 h-8 flex items-center justify-center"
+            className="text-text-secondary text-lg w-10 h-10 flex items-center justify-center rounded-full hover:bg-bg-elevated active:opacity-60 transition-colors"
             aria-label="Close"
           >
             ✕
@@ -698,13 +698,15 @@ export default function WorkoutSession() {
       )}
 
       {/* ── Swap modal ── */}
-      {swappingIndex !== null && (
-        <SwapModal
-          exercise={exercises[swappingIndex]}
-          onSwap={handleSwap}
-          onClose={() => setSwappingIndex(null)}
-        />
-      )}
+      <AnimatePresence>
+        {swappingIndex !== null && (
+          <SwapModal
+            exercise={exercises[swappingIndex]}
+            onSwap={handleSwap}
+            onClose={() => setSwappingIndex(null)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Exercise detail sheet ── */}
       <AnimatePresence>
@@ -735,9 +737,10 @@ export default function WorkoutSession() {
       </AnimatePresence>
 
       {/* ── Options menu backdrop ── */}
+      {/* z-[9] keeps it below the sticky header (z-10) so dropdown items stay clickable */}
       {showOptions && (
         <div
-          className="fixed inset-0 z-10"
+          className="fixed inset-0 z-[9]"
           onClick={() => setShowOptions(false)}
         />
       )}

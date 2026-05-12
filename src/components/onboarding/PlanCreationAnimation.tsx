@@ -9,7 +9,15 @@ const STEPS = [
   'Building your first workout...',
 ]
 
-export default function PlanCreationAnimation({ onComplete }: { onComplete: () => void }) {
+export default function PlanCreationAnimation({
+  onComplete,
+  isWorkoutReady = false,
+  hasError = false,
+}: {
+  onComplete: () => void
+  isWorkoutReady?: boolean
+  hasError?: boolean
+}) {
   const [stepIndex, setStepIndex] = useState(0)
   const [done, setDone] = useState(false)
 
@@ -70,7 +78,7 @@ export default function PlanCreationAnimation({ onComplete }: { onComplete: () =
         />
       </div>
 
-      {done && (
+      {done && (isWorkoutReady || hasError) && (
         <motion.button
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -78,8 +86,17 @@ export default function PlanCreationAnimation({ onComplete }: { onComplete: () =
           onClick={onComplete}
           className="mt-12 bg-accent-red text-white font-semibold py-4 px-10 rounded-xl"
         >
-          See my first workout →
+          {hasError ? 'Continue →' : 'See my first workout →'}
         </motion.button>
+      )}
+      {done && !isWorkoutReady && !hasError && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-12 text-text-secondary text-sm"
+        >
+          Almost ready…
+        </motion.p>
       )}
     </div>
   )

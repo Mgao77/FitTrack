@@ -135,8 +135,8 @@ export default function PreWorkoutSheet({ onClose }: PreWorkoutSheetProps) {
 
   function handleGenerateTap() {
     if (!hasSelection) return
-    // Show conflict dialog if program suggests something different
-    if (program && patternPick !== program.suggestion) {
+    // Show conflict dialog only when a pattern is picked and it differs from the suggestion
+    if (program && patternPick !== null && patternPick !== program.suggestion) {
       setShowConflict(true)
       return
     }

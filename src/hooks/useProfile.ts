@@ -34,7 +34,9 @@ export function useProfile() {
       if (error) throw error
       return data as Profile
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Set data directly so isOnboardingComplete is truthy immediately — no refetch lag
+      queryClient.setQueryData(['profile', user?.id], data)
       queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })
     },
   })
