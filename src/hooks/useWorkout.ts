@@ -61,6 +61,9 @@ export function useWorkout() {
       progressiveOverload: unknown
       recentExercises?: string[]
       excludeExercises?: string[]
+      selectedTargets?: string[]
+      dailyNotes?: string
+      sessionLabel?: string
     }) => invokeFunction<GeneratedWorkout>('generate-workout', payload),
   })
 

@@ -1,11 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { useAuth } from './hooks/useAuth'
 import { useProfile } from './hooks/useProfile'
-import { useWorkout } from './hooks/useWorkout'
-import { useMuscleFatigue } from './hooks/useMuscleFatigue'
-import { useProgressiveOverload } from './hooks/useProgressiveOverload'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import TabBar from './components/layout/TabBar'
 import FAB from './components/layout/FAB'
@@ -13,6 +11,7 @@ import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import WorkoutSession from './pages/WorkoutSession'
 import MealLogger from './components/nutrition/MealLogger'
+import PreWorkoutSheet from './components/workout/PreWorkoutSheet'
 import Today from './pages/Today'
 import Plan from './pages/Plan'
 import Progress from './pages/Progress'
@@ -21,37 +20,24 @@ import Profile from './pages/Profile'
 const queryClient = new QueryClient()
 
 function FABContainer() {
-  const navigate = useNavigate()
-  const { profile } = useProfile()
-  const { recoveryMap } = useMuscleFatigue()
-  const { overloadData } = useProgressiveOverload()
-  const { generateWorkout, recentExercises } = useWorkout()
   const [showMealLogger, setShowMealLogger] = useState(false)
-
-  async function handleStartWorkout() {
-    try {
-      const workout = await generateWorkout.mutateAsync({
-        profile,
-        muscleRecovery: recoveryMap,
-        progressiveOverload: overloadData,
-        recentExercises,
-      })
-      navigate('/workout/session', { state: { workout } })
-    } catch {
-      // error handled by mutation state
-    }
-  }
+  const [showPreWorkout, setShowPreWorkout] = useState(false)
 
   return (
     <>
       <FAB
         onLogMeal={() => setShowMealLogger(true)}
-        onStartWorkout={handleStartWorkout}
-        generating={generateWorkout.isPending}
+        onStartWorkout={() => setShowPreWorkout(true)}
+        generating={false}
       />
       {showMealLogger && (
         <MealLogger onClose={() => setShowMealLogger(false)} />
       )}
+      <AnimatePresence>
+        {showPreWorkout && (
+          <PreWorkoutSheet onClose={() => setShowPreWorkout(false)} />
+        )}
+      </AnimatePresence>
     </>
   )
 }

@@ -11,7 +11,16 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { profile, muscleRecovery, progressiveOverload, recentExercises, excludeExercises } = await req.json()
+    const {
+      profile,
+      muscleRecovery,
+      progressiveOverload,
+      recentExercises,
+      excludeExercises,
+      selectedTargets,
+      dailyNotes,
+      sessionLabel,
+    } = await req.json()
 
     const recentList: string[] = recentExercises ?? []
     const excludeList: string[] = excludeExercises ?? []
@@ -63,13 +72,25 @@ Required JSON schema:
   }]
 }`
 
+    const targetsSection = selectedTargets?.length > 0
+      ? `\nTARGET MUSCLE GROUPS FOR TODAY (user selected — you MUST build the workout around these): ${JSON.stringify(selectedTargets)}`
+      : ''
+
+    const notesSection = dailyNotes
+      ? `\nUSER NOTES: "${dailyNotes}" — adjust exercise selection accordingly. Examples: if they mention a sore body part, avoid loading it directly; if they mention time constraints like "30 min", reduce total exercises to 4-5; if they want to focus on a specific area, add an extra set for it.`
+      : ''
+
+    const labelSection = sessionLabel
+      ? `\nSESSION NAME: Use "${sessionLabel}" as the workout name.`
+      : ''
+
     const userMessage = `Profile: ${JSON.stringify(profile)}
 
 Muscle Recovery Status: ${JSON.stringify(muscleRecovery)}
 
 Progressive Overload History: ${JSON.stringify(progressiveOverload ?? [])}
 
-${avoidList.length > 0 ? `EXERCISES TO AVOID (performed recently — use alternatives): ${JSON.stringify(avoidList)}` : 'No recent exercise history — this is a fresh start, use your best judgment for variety.'}`
+${avoidList.length > 0 ? `EXERCISES TO AVOID (performed recently — use alternatives): ${JSON.stringify(avoidList)}` : 'No recent exercise history — this is a fresh start, use your best judgment for variety.'}${targetsSection}${notesSection}${labelSection}`
 
     // Retry up to 3 times on overload (529) with exponential backoff
     let response: Response | null = null

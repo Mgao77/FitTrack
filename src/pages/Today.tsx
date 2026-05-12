@@ -1,14 +1,15 @@
+import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useWorkout } from '../hooks/useWorkout'
 import { useMuscleFatigue } from '../hooks/useMuscleFatigue'
-import { useProgressiveOverload } from '../hooks/useProgressiveOverload'
 import { useMeals } from '../hooks/useMeals'
 import MacroDisplay from '../components/nutrition/MacroDisplay'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import Card from '../components/ui/Card'
+import PreWorkoutSheet from '../components/workout/PreWorkoutSheet'
 import { calculateCaloriesFromProfile, calculateBMR } from '../lib/calories'
+import { AnimatePresence } from 'framer-motion'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -18,33 +19,22 @@ function getGreeting() {
 }
 
 export default function Today() {
-  const navigate = useNavigate()
   const { profile } = useProfile()
   const { recoveryMap, isLoading: fatigueLoading } = useMuscleFatigue()
-  const { overloadData } = useProgressiveOverload()
-  const { generateWorkout, todayWorkout, recentExercises } = useWorkout()
+  const { todayWorkout } = useWorkout()
   const { meals, dailyTotals } = useMeals()
+  const [showSheet, setShowSheet] = useState(false)
 
   const targets = profile ? calculateCaloriesFromProfile(profile) : null
   const bmr = profile ? calculateBMR(profile) : 0
   const workoutBurned = todayWorkout?.estimated_calories_burned ?? 0
   const netCalories = dailyTotals.calories - workoutBurned - bmr
 
-  async function handleGenerate() {
-    try {
-      const workout = await generateWorkout.mutateAsync({
-        profile,
-        muscleRecovery: recoveryMap,
-        progressiveOverload: overloadData,
-        recentExercises,
-      })
-      navigate('/workout/session', { state: { workout } })
-    } catch (e) {
-      // error shown via generateWorkout.error
-    }
-  }
-
   return (
+    <>
+    <AnimatePresence>
+      {showSheet && <PreWorkoutSheet onClose={() => setShowSheet(false)} />}
+    </AnimatePresence>
     <div className="min-h-screen bg-bg-primary pb-28">
       {/* Header */}
       <div className="px-5 pt-14 pb-4">
@@ -78,17 +68,11 @@ export default function Today() {
                 <p className="text-text-secondary text-sm mb-4">
                   {recoveryMap.filter((m) => m.status === 'recovered').length} muscle groups fully recovered
                 </p>
-                {generateWorkout.error && (
-                  <p className="text-red-400 text-sm mb-3 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2">
-                    {(generateWorkout.error as Error).message}
-                  </p>
-                )}
                 <button
-                  onClick={handleGenerate}
-                  disabled={generateWorkout.isPending}
-                  className="w-full bg-accent-red text-white font-semibold py-3 rounded-xl disabled:opacity-50"
+                  onClick={() => setShowSheet(true)}
+                  className="w-full bg-accent-red text-white font-semibold py-3 rounded-xl active:opacity-80"
                 >
-                  {generateWorkout.isPending ? 'Generating...' : 'Generate Workout'}
+                  Choose & Generate
                 </button>
               </>
             )}
@@ -167,5 +151,6 @@ export default function Today() {
         )}
       </div>
     </div>
+    </>
   )
 }
