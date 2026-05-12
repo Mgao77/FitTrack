@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Sparkles, Search } from 'lucide-react'
 import FoodSearch from './FoodSearch'
 import PhotoCapture from './PhotoCapture'
+import QuickLogTab from './QuickLogTab'
 import { calculateMacros, searchFoods } from '../../lib/openFoodFacts'
 import { useMeals } from '../../hooks/useMeals'
+import { useStreaks } from '../../hooks/useStreaks'
 import type { ClaudeVisionFoodItem, FoodSearchResult } from '../../types'
 
 interface MealLoggerProps {
@@ -19,15 +21,19 @@ interface PendingItem {
   carbs: number
   fat: number
   sugar: number
-  source: 'manual' | 'open_food_facts' | 'claude_vision'
+  source: 'manual' | 'open_food_facts' | 'claude_vision' | 'ai_estimate'
 }
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
+type LogMode = 'quick' | 'search'
 
 export default function MealLogger({ onClose }: MealLoggerProps) {
   const { logMeal } = useMeals()
+  const { incrementStreak } = useStreaks()
   const [mealType, setMealType] = useState<typeof MEAL_TYPES[number]>('lunch')
+  const [mode, setMode] = useState<LogMode>('quick')
   const [items, setItems] = useState<PendingItem[]>([])
+  const [aiSentence, setAiSentence] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [visionLoading, setVisionLoading] = useState(false)
 
@@ -43,7 +49,7 @@ export default function MealLogger({ onClose }: MealLoggerProps) {
         carbs: macros.carbs,
         fat: macros.fat,
         sugar: macros.sugar,
-        source: 'open_food_facts',
+        source: food.isAiEstimate ? 'ai_estimate' : 'open_food_facts',
       },
     ])
   }
@@ -51,7 +57,6 @@ export default function MealLogger({ onClose }: MealLoggerProps) {
   async function handleVisionIdentified(visionItems: ClaudeVisionFoodItem[]) {
     setVisionLoading(true)
     for (const vi of visionItems) {
-      // Try to look up in Open Food Facts
       const results = await searchFoods(vi.name)
       if (results[0]) {
         const macros = calculateMacros(results[0], vi.estimatedGrams)
@@ -69,18 +74,42 @@ export default function MealLogger({ onClose }: MealLoggerProps) {
           },
         ])
       }
-      // If no match found, skip (user can add manually)
     }
     setVisionLoading(false)
   }
 
+  function handleQuickParsed(
+    parsedItems: { name: string; grams: number; calories: number; protein: number; carbs: number; fat: number; sugar: number }[],
+    sentence: string
+  ) {
+    const newItems: PendingItem[] = parsedItems.map((item) => ({
+      food_name: item.name,
+      serving_grams: item.grams,
+      calories: item.calories,
+      protein: item.protein,
+      carbs: item.carbs,
+      fat: item.fat,
+      sugar: item.sugar,
+      source: 'ai_estimate',
+    }))
+    setItems((prev) => [...prev, ...newItems])
+    setAiSentence(sentence)
+  }
+
   const totalCalories = items.reduce((s, i) => s + i.calories, 0)
+  const hasAiItems = items.some((i) => i.source === 'ai_estimate')
 
   async function handleSave() {
     if (items.length === 0) return
     setSaving(true)
     try {
-      await logMeal.mutateAsync({ mealType, items })
+      await logMeal.mutateAsync({
+        mealType,
+        items,
+        notes: hasAiItems ? aiSentence || undefined : undefined,
+        isAiEstimate: hasAiItems,
+      })
+      incrementStreak.mutate('logging')
       onClose()
     } catch (e) {
       console.error('Failed to save meal:', e)
@@ -119,13 +148,44 @@ export default function MealLogger({ onClose }: MealLoggerProps) {
           ))}
         </div>
 
-        <PhotoCapture onIdentified={handleVisionIdentified} />
+        {/* Mode toggle */}
+        <div className="flex bg-bg-elevated rounded-2xl p-1 gap-1">
+          <button
+            onClick={() => setMode('quick')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+              mode === 'quick'
+                ? 'bg-bg-primary text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            <Sparkles size={14} />
+            Quick Log (AI)
+          </button>
+          <button
+            onClick={() => setMode('search')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-sm font-medium transition-colors ${
+              mode === 'search'
+                ? 'bg-bg-primary text-text-primary shadow-sm'
+                : 'text-text-tertiary'
+            }`}
+          >
+            <Search size={14} />
+            Search Database
+          </button>
+        </div>
 
-        {visionLoading && (
-          <p className="text-text-secondary text-sm text-center">Looking up nutrition info...</p>
+        {/* Mode content */}
+        {mode === 'quick' ? (
+          <QuickLogTab onParsed={handleQuickParsed} />
+        ) : (
+          <>
+            <PhotoCapture onIdentified={handleVisionIdentified} />
+            {visionLoading && (
+              <p className="text-text-secondary text-sm text-center">Looking up nutrition info...</p>
+            )}
+            <FoodSearch onAdd={handleAddFood} />
+          </>
         )}
-
-        <FoodSearch onAdd={handleAddFood} />
 
         {/* Logged items */}
         {items.length > 0 && (
@@ -136,7 +196,14 @@ export default function MealLogger({ onClose }: MealLoggerProps) {
             {items.map((item, i) => (
               <div key={i} className="flex items-center justify-between bg-bg-card border border-border rounded-xl p-3">
                 <div className="flex-1 min-w-0 mr-3">
-                  <p className="text-text-primary text-sm font-medium line-clamp-1">{item.food_name}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-text-primary text-sm font-medium line-clamp-1">{item.food_name}</p>
+                    {item.source === 'ai_estimate' && (
+                      <span className="inline-flex items-center gap-0.5 bg-accent-red/10 text-accent-red text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        <Sparkles size={9} />AI
+                      </span>
+                    )}
+                  </div>
                   <p className="text-text-tertiary text-xs">{item.serving_grams}g · {item.calories} cal · {item.protein}g protein</p>
                 </div>
                 <button

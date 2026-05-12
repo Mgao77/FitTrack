@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { Camera } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
+import { invokeFunction } from '../../lib/invokeFunction'
 import type { ClaudeVisionFoodItem } from '../../types'
-
 
 
 interface PhotoCaptureProps {
@@ -27,11 +26,10 @@ export default function PhotoCapture({ onIdentified }: PhotoCaptureProps) {
       const base64 = btoa(binary)
       const mediaType = (file.type as 'image/jpeg' | 'image/png' | 'image/webp') || 'image/jpeg'
 
-      const { data, error } = await supabase.functions.invoke('analyze-meal-photo', {
-        body: { imageBase64: base64, mediaType },
+      const items = await invokeFunction<ClaudeVisionFoodItem[]>('analyze-meal-photo', {
+        imageBase64: base64,
+        mediaType,
       })
-      if (error) throw new Error('Analysis failed')
-      const items: ClaudeVisionFoodItem[] = data
       onIdentified(items)
     } catch (e) {
       setError('Failed to analyze photo. Please try again or add foods manually.')

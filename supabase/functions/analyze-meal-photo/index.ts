@@ -23,10 +23,21 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        system: `Analyze this meal photo. Identify each food item visible and estimate portion size in grams.
-Be specific: "grilled chicken breast" not "chicken", "brown rice" not "rice".
-Return ONLY a valid JSON array. No explanation, no markdown.
-Schema: [{"name": "string", "estimatedGrams": number, "confidence": "high"|"medium"|"low"}]`,
+        system: `Analyze this meal photo. Your job is to identify WHAT THE PERSON IS EATING as a complete meal.
+
+Return structured output as strict JSON (no markdown, no commentary):
+{
+  "primary_items": [{"name": "string", "estimatedGrams": number, "confidence": "high"|"medium"|"low"}],
+  "accompaniments": [{"name": "string", "estimatedGrams": number, "confidence": "high"|"medium"|"low"}]
+}
+
+Rules:
+1. ALWAYS identify the primary dish first. A plate of pancakes with butter on top has primary_items=[{name:"Pancakes", ...}], accompaniments=[{name:"Butter", ...}] — NOT the reverse.
+2. Be specific: "Grilled Chicken Breast" not "Chicken". "Brown Rice" not "Rice". "Whole Wheat Pasta" not "Pasta".
+3. Estimate portion size in grams for each item based on what is visible.
+4. Never return only toppings/sauces/garnishes as primary_items — the main food is always primary.
+5. If you see a plate of food with a condiment, sauce, or topping — the plate contents are primary, the condiment is accompaniment.
+6. Output strict JSON only.`,
         messages: [{
           role: 'user',
           content: [{
@@ -48,10 +59,33 @@ Schema: [{"name": "string", "estimatedGrams": number, "confidence": "high"|"medi
     }
 
     const data = await response.json()
-    const text = data.content?.[0]?.text ?? '[]'
+    const text = data.content?.[0]?.text ?? '{}'
 
-    const jsonMatch = text.match(/\[[\s\S]*\]/)
-    const items = jsonMatch ? JSON.parse(jsonMatch[0]) : []
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return new Response(JSON.stringify([]),
+        { headers: { ...CORS, 'Content-Type': 'application/json' } })
+    }
+
+    const parsed = JSON.parse(jsonMatch[0])
+
+    // Flatten primary_items + accompaniments into ClaudeVisionFoodItem[]
+    // Primary items first, then accompaniments
+    const primaryItems = (parsed.primary_items ?? []) as Array<{ name: string; estimatedGrams: number; confidence: string }>
+    const accompaniments = (parsed.accompaniments ?? []) as Array<{ name: string; estimatedGrams: number; confidence: string }>
+
+    const items = [
+      ...primaryItems.map((item) => ({
+        name: item.name,
+        estimatedGrams: item.estimatedGrams ?? 100,
+        confidence: (item.confidence as 'high' | 'medium' | 'low') ?? 'medium',
+      })),
+      ...accompaniments.map((item) => ({
+        name: item.name,
+        estimatedGrams: item.estimatedGrams ?? 20,
+        confidence: (item.confidence as 'high' | 'medium' | 'low') ?? 'medium',
+      })),
+    ]
 
     return new Response(JSON.stringify(items),
       { headers: { ...CORS, 'Content-Type': 'application/json' } })

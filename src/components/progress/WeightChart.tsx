@@ -4,10 +4,13 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfile } from '../../hooks/useProfile'
 import type { WeightEntry } from '../../types'
 
 export default function WeightChart() {
   const { user } = useAuth()
+  const { profile } = useProfile()
+  const unit = profile?.unit_preference ?? 'kg'
   const queryClient = useQueryClient()
   const [range, setRange] = useState<30 | 60 | 90>(30)
   const [showLogger, setShowLogger] = useState(false)
@@ -34,7 +37,7 @@ export default function WeightChart() {
       const { error } = await supabase.from('weight_log').upsert({
         user_id: user!.id,
         weight,
-        unit: 'kg',
+        unit,
         logged_at: new Date().toISOString().split('T')[0],
       }, { onConflict: 'user_id,logged_at' })
       if (error) throw error

@@ -11,18 +11,34 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
 
   try {
-    const { profile, muscleRecovery, progressiveOverload } = await req.json()
+    const { profile, muscleRecovery, progressiveOverload, recentExercises, excludeExercises } = await req.json()
 
-    const systemPrompt = `You are a certified personal trainer generating workout plans.
-Given the user's profile, generate a single workout session as valid JSON.
+    const recentList: string[] = recentExercises ?? []
+    const excludeList: string[] = excludeExercises ?? []
+    const avoidList = [...new Set([...recentList, ...excludeList])]
 
-Rules:
-- ONLY use exercises possible with the user's available equipment: ${JSON.stringify(profile?.equipment ?? [])}
-- NEVER include exercises that load injured body parts: ${JSON.stringify(profile?.injuries ?? [])}
+    const systemPrompt = `You are a certified personal trainer generating varied, intelligent workout plans.
+
+EQUIPMENT AVAILABLE: ${JSON.stringify(profile?.equipment ?? [])}
+INJURIES TO AVOID: ${JSON.stringify(profile?.injuries ?? [])}
+
+VARIETY RULES (most important):
+- Prioritize exercise variety. Do NOT repeat exercises performed in the last 7 days unless the user's available equipment makes alternatives impossible.
+- Favor different movement patterns across sessions: horizontal press, incline press, vertical press, horizontal pull, vertical pull, hinge, squat, lunge, carry, isolation.
+- Rotate between free weights, cables, machines, and bodyweight variations of the same movement pattern.
+- If the user has done barbell work recently, favor dumbbell or cable variations today, and vice versa.
+
+PROGRESSIVE OVERLOAD:
 - Prioritize muscle groups with recovery_pct > 80
 - Weight suggestions: beginners start at 40-50% of bodyweight-relative benchmarks, advanced can go heavier
+- Use progressive overload history to suggest appropriate weight increases
+
+EXERCISE SELECTION:
 - Include MET values for each exercise for calorie calculations
-- Always include 2-3 alternative exercises per movement
+- Always include 8 alternative exercises per movement targeting the SAME primary muscle group
+- Vary alternatives across equipment: barbell, dumbbell, cable, machine, bodyweight, resistance band
+- Example chest alternatives: barbell bench press, incline dumbbell press, cable flyes, pec deck, smith machine press, push-ups, dips, dumbbell flyes
+- Alternatives must be compatible with available equipment
 - Return ONLY valid JSON. No explanation, no markdown, no code blocks.
 
 Required JSON schema:
@@ -35,45 +51,66 @@ Required JSON schema:
     "name": "string",
     "primaryMuscle": "string",
     "secondaryMuscles": ["string"],
+    "movementPattern": "horizontal_press"|"incline_press"|"vertical_press"|"horizontal_pull"|"vertical_pull"|"hinge"|"squat"|"lunge"|"isolation"|"carry",
     "sets": number,
     "reps": number,
     "suggestedWeight": number,
     "weightUnit": "kg",
     "restSeconds": number,
     "youtubeSearchQuery": "string",
-    "alternatives": [{"name": "string", "reason": "string"}],
+    "alternatives": [{"name": "string", "reason": "string", "movementPattern": "string"}],
     "metValue": number
   }]
 }`
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: `Profile: ${JSON.stringify(profile)}\n\nMuscle Recovery: ${JSON.stringify(muscleRecovery)}\n\nProgressive Overload History: ${JSON.stringify(progressiveOverload ?? [])}`,
-        }],
-      }),
-    })
+    const userMessage = `Profile: ${JSON.stringify(profile)}
 
-    if (!response.ok) {
-      const err = await response.text()
-      return new Response(JSON.stringify({ error: `Anthropic API error: ${err}` }),
-        { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } })
+Muscle Recovery Status: ${JSON.stringify(muscleRecovery)}
+
+Progressive Overload History: ${JSON.stringify(progressiveOverload ?? [])}
+
+${avoidList.length > 0 ? `EXERCISES TO AVOID (performed recently — use alternatives): ${JSON.stringify(avoidList)}` : 'No recent exercise history — this is a fresh start, use your best judgment for variety.'}`
+
+    // Retry up to 3 times on overload (529) with exponential backoff
+    let response: Response | null = null
+    let lastErr = ''
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)))
+      }
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMessage }],
+        }),
+      })
+      if (response.ok) break
+      lastErr = await response.text()
+      // Only retry on overload (529) or rate limit (429)
+      if (response.status !== 529 && response.status !== 429) break
+    }
+
+    if (!response || !response.ok) {
+      // User-friendly message for overload
+      const isOverload = lastErr.includes('overloaded') || lastErr.includes('529')
+      const msg = isOverload
+        ? 'The AI is busy right now. Please wait a moment and try again.'
+        : `Generation failed: ${lastErr}`
+      return new Response(JSON.stringify({ error: msg }),
+        { status: 503, headers: { ...CORS, 'Content-Type': 'application/json' } })
     }
 
     const data = await response.json()
     const text = data.content?.[0]?.text ?? ''
 
-    // Extract JSON — Claude sometimes adds markdown fences
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) {
       return new Response(JSON.stringify({ error: 'No JSON in response', raw: text }),

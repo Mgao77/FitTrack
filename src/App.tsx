@@ -25,7 +25,7 @@ function FABContainer() {
   const { profile } = useProfile()
   const { recoveryMap } = useMuscleFatigue()
   const { overloadData } = useProgressiveOverload()
-  const { generateWorkout } = useWorkout()
+  const { generateWorkout, recentExercises } = useWorkout()
   const [showMealLogger, setShowMealLogger] = useState(false)
 
   async function handleStartWorkout() {
@@ -34,6 +34,7 @@ function FABContainer() {
         profile,
         muscleRecovery: recoveryMap,
         progressiveOverload: overloadData,
+        recentExercises,
       })
       navigate('/workout/session', { state: { workout } })
     } catch {

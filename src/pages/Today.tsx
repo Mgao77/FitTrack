@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useWorkout } from '../hooks/useWorkout'
@@ -7,7 +8,7 @@ import { useMeals } from '../hooks/useMeals'
 import MacroDisplay from '../components/nutrition/MacroDisplay'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import Card from '../components/ui/Card'
-import { calculateCaloriesFromProfile } from '../lib/calories'
+import { calculateCaloriesFromProfile, calculateBMR } from '../lib/calories'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -21,10 +22,13 @@ export default function Today() {
   const { profile } = useProfile()
   const { recoveryMap, isLoading: fatigueLoading } = useMuscleFatigue()
   const { overloadData } = useProgressiveOverload()
-  const { generateWorkout, todayWorkout } = useWorkout()
+  const { generateWorkout, todayWorkout, recentExercises } = useWorkout()
   const { meals, dailyTotals } = useMeals()
 
   const targets = profile ? calculateCaloriesFromProfile(profile) : null
+  const bmr = profile ? calculateBMR(profile) : 0
+  const workoutBurned = todayWorkout?.estimated_calories_burned ?? 0
+  const netCalories = dailyTotals.calories - workoutBurned - bmr
 
   async function handleGenerate() {
     try {
@@ -32,6 +36,7 @@ export default function Today() {
         profile,
         muscleRecovery: recoveryMap,
         progressiveOverload: overloadData,
+        recentExercises,
       })
       navigate('/workout/session', { state: { workout } })
     } catch (e) {
@@ -106,6 +111,29 @@ export default function Today() {
                 fat: targets.fatTarget,
               }}
             />
+
+            {/* Net calories row */}
+            {bmr > 0 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-text-secondary text-xs">Net calories</p>
+                    <p className="text-text-tertiary text-[10px]">
+                      {Math.round(dailyTotals.calories)} eaten
+                      {workoutBurned > 0 && ` − ${Math.round(workoutBurned)} workout`}
+                      {` − ${Math.round(bmr)} BMR`}
+                    </p>
+                  </div>
+                  <p className={`text-xl font-bold tabular-nums ${
+                    netCalories > 200 ? 'text-orange-400' :
+                    netCalories < -200 ? 'text-blue-400' :
+                    'text-green-400'
+                  }`}>
+                    {netCalories > 0 ? '+' : ''}{Math.round(netCalories)}
+                  </p>
+                </div>
+              </div>
+            )}
           </Card>
         )}
 
@@ -117,7 +145,14 @@ export default function Today() {
               {meals.map((meal) => (
                 <div key={meal.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                   <div>
-                    <p className="text-text-primary text-sm font-medium capitalize">{meal.meal_type}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-text-primary text-sm font-medium capitalize">{meal.meal_type}</p>
+                      {meal.is_ai_estimate && (
+                        <span className="inline-flex items-center gap-0.5 bg-accent-red/10 text-accent-red text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                          <Sparkles size={9} />AI
+                        </span>
+                      )}
+                    </div>
                     <p className="text-text-tertiary text-xs">
                       {new Date(meal.logged_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                     </p>

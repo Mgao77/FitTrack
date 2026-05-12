@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti'
 interface PostWorkoutSummaryProps {
   workoutName: string
   totalVolume: number
+  volumeUnit: string
   caloriesBurned: number
   durationMinutes: number
   exercisesCompleted: number
@@ -36,7 +37,7 @@ function useCountUp(target: number, duration = 1200) {
 }
 
 export default function PostWorkoutSummary({
-  workoutName, totalVolume, caloriesBurned, durationMinutes,
+  workoutName, totalVolume, volumeUnit, caloriesBurned, durationMinutes,
   exercisesCompleted, exercisesTotal, onSave, saving
 }: PostWorkoutSummaryProps) {
   const confettiFired = useRef(false)
@@ -54,7 +55,7 @@ export default function PostWorkoutSummary({
   }, [])
 
   const stats = [
-    { label: 'Total Volume', value: `${volume} kg`, icon: '🏋️' },
+    { label: 'Total Volume', value: `${volume} ${volumeUnit}`, icon: '🏋️' },
     { label: 'Calories', value: `~${calories}`, icon: '🔥' },
     { label: 'Duration', value: `${duration} min`, icon: '⏱️' },
     { label: 'Exercises', value: `${exercisesCompleted}/${exercisesTotal}`, icon: '✅' },

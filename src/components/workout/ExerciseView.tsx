@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { invokeFunction } from '../../lib/invokeFunction'
 import type { Exercise } from '../../types'
 
 interface ExerciseViewProps {
@@ -15,10 +15,10 @@ export default function ExerciseView({ exercise, currentSet, onSwap }: ExerciseV
     let cancelled = false
     async function fetchVideo() {
       try {
-        const { data, error } = await supabase.functions.invoke('youtube-search', {
-          body: { query: exercise.youtubeSearchQuery },
+        const { videoId: vid } = await invokeFunction<{ videoId: string }>('youtube-search', {
+          query: exercise.youtubeSearchQuery,
         })
-        if (!error && data?.videoId && !cancelled) setVideoId(data.videoId)
+        if (vid && !cancelled) setVideoId(vid)
       } catch {
         // Non-critical — no video just means no demo shown
       }

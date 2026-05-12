@@ -12,7 +12,7 @@ interface AuthContextValue {
   signOut: () => ReturnType<typeof supabase.auth.signOut>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+export const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)

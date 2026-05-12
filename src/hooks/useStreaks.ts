@@ -18,48 +18,55 @@ export function useStreaks() {
 
   const incrementStreak = useMutation({
     mutationFn: async (streakType: StreakType): Promise<string | null> => {
-      const today = new Date().toISOString().split('T')[0]
+      // Use local date so non-UTC users get the correct "today"
+      const today = new Date().toLocaleDateString('sv')
 
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchError } = await supabase
         .from('streaks')
         .select('*')
         .eq('user_id', user!.id)
         .eq('streak_type', streakType)
-        .single()
+        .maybeSingle()
+      if (fetchError) throw fetchError
 
       const alreadyIncrementedToday = existing?.last_incremented_at === today
       if (alreadyIncrementedToday) return null
 
-      const yesterday = new Date()
-      yesterday.setDate(yesterday.getDate() - 1)
-      const yesterdayStr = yesterday.toISOString().split('T')[0]
+      // Compute yesterday in local time to avoid month-boundary issues
+      const nowLocal = new Date()
+      const yesterdayLocal = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate() - 1)
+      const yesterdayStr = yesterdayLocal.toLocaleDateString('sv')
 
       const continuedStreak = existing?.last_incremented_at === yesterdayStr
       const newCount = continuedStreak ? (existing.current_count + 1) : 1
       const newLongest = Math.max(existing?.longest_count ?? 0, newCount)
 
-      await supabase.from('streaks').upsert({
+      const { error: upsertError } = await supabase.from('streaks').upsert({
         user_id: user!.id,
         streak_type: streakType,
         current_count: newCount,
         longest_count: newLongest,
         last_incremented_at: today,
       }, { onConflict: 'user_id,streak_type' })
+      if (upsertError) throw upsertError
 
       // Check achievement thresholds
       const thresholds = ACHIEVEMENT_THRESHOLDS[streakType] ?? []
       const crossed = thresholds.find((t) => t === newCount)
       if (crossed) {
         const achievementType = `${streakType}_${crossed}day_streak`
-        await supabase.from('achievements').upsert({
+        const { error: achievementError } = await supabase.from('achievements').upsert({
           user_id: user!.id,
           achievement_type: achievementType,
         }, { onConflict: 'user_id,achievement_type' })
+        if (achievementError) throw achievementError
         return achievementType
       }
 
-      queryClient.invalidateQueries({ queryKey: ['streaks', user?.id] })
       return null
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['streaks', user?.id] })
     },
   })
 

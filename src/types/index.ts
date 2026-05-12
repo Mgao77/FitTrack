@@ -46,6 +46,8 @@ export interface MuscleRecoveryState {
 export interface ExerciseAlternative {
   name: string
   reason: string
+  gifUrl?: string       // animated GIF from ExerciseDB when available
+  equipment?: string    // e.g. "barbell", "dumbbell", "cable"
 }
 
 export interface Exercise {
@@ -119,6 +121,8 @@ export interface Meal {
   meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'
   logged_at: string
   photo_url: string | null
+  notes: string | null
+  is_ai_estimate: boolean
   total_calories: number | null
   total_protein: number | null
   total_carbs: number | null
@@ -137,7 +141,7 @@ export interface MealItem {
   carbs: number | null
   fat: number | null
   sugar: number | null
-  source: 'manual' | 'open_food_facts' | 'claude_vision'
+  source: 'manual' | 'open_food_facts' | 'claude_vision' | 'ai_estimate'
   open_food_facts_id: string | null
   created_at: string
 }
@@ -193,6 +197,8 @@ export interface FoodSearchResult {
   carbs_per_100g: number
   fat_per_100g: number
   sugar_per_100g: number
+  source?: 'local' | 'nutritionix' | 'usda' | 'ai_estimate'  // which tier served it
+  isAiEstimate?: boolean  // shown in UI as "AI estimate"
 }
 
 export interface ClaudeVisionFoodItem {

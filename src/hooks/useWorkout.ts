@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { invokeFunction } from '../lib/invokeFunction'
+import { enqueueItem } from '../stores/offlineQueue'
 import { useAuth } from './useAuth'
 import type { GeneratedWorkout, Workout, LoggedSetData } from '../types'
 
@@ -10,12 +12,14 @@ export function useWorkout() {
   const { data: todayWorkout } = useQuery({
     queryKey: ['today_workout', user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split('T')[0]
+      // Use local date for day boundary so non-UTC users see their own day's workout
+      const localToday = new Date().toLocaleDateString('sv') // 'sv' locale gives YYYY-MM-DD
+      const startOfToday = new Date(`${localToday}T00:00:00`).toISOString()
       const { data } = await supabase
         .from('workouts')
         .select('*')
         .eq('user_id', user!.id)
-        .gte('started_at', `${today}T00:00:00Z`)
+        .gte('started_at', startOfToday)
         .not('completed_at', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -25,18 +29,39 @@ export function useWorkout() {
     enabled: !!user,
   })
 
+  // Last 7 days of exercise names — passed to Claude to avoid repetition
+  const { data: recentExercises = [] } = useQuery({
+    queryKey: ['recent_exercises', user?.id],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const { data } = await supabase
+        .from('exercise_logs')
+        .select('exercise_name, created_at')
+        .eq('user_id', user!.id)
+        .gte('created_at', since)
+        .order('created_at', { ascending: false })
+      if (!data) return []
+      // Unique exercise names, most recent first
+      const seen = new Set<string>()
+      return data.reduce<string[]>((acc, row) => {
+        if (!seen.has(row.exercise_name)) {
+          seen.add(row.exercise_name)
+          acc.push(row.exercise_name)
+        }
+        return acc
+      }, [])
+    },
+    enabled: !!user,
+  })
+
   const generateWorkout = useMutation({
-    mutationFn: async (payload: {
+    mutationFn: (payload: {
       profile: unknown
       muscleRecovery: unknown
       progressiveOverload: unknown
-    }): Promise<GeneratedWorkout> => {
-      const { data, error } = await supabase.functions.invoke('generate-workout', {
-        body: payload,
-      })
-      if (error) throw new Error(`Workout generation failed: ${error.message}`)
-      return data as GeneratedWorkout
-    },
+      recentExercises?: string[]
+      excludeExercises?: string[]
+    }) => invokeFunction<GeneratedWorkout>('generate-workout', payload),
   })
 
   const saveWorkout = useMutation({
@@ -58,24 +83,28 @@ export function useWorkout() {
         (sum, s) => sum + s.actualReps * s.actualWeight, 0
       )
 
+      // Pre-generate workout ID so exercise_logs have a stable FK if we need to queue
+      const workoutId = crypto.randomUUID()
+      const workoutRow = {
+        id: workoutId,
+        user_id: user!.id,
+        workout_name: workout.name,
+        target_muscle_groups: workout.targetMuscleGroups,
+        started_at: startedAt.toISOString(),
+        completed_at: completedAt.toISOString(),
+        total_duration_minutes: durationMinutes,
+        estimated_calories_burned: workout.estimatedCaloriesBurned,
+        total_volume: Math.round(totalVolume),
+      }
+
       const { data: workoutRecord, error: workoutError } = await supabase
         .from('workouts')
-        .insert({
-          user_id: user!.id,
-          workout_name: workout.name,
-          target_muscle_groups: workout.targetMuscleGroups,
-          started_at: startedAt.toISOString(),
-          completed_at: completedAt.toISOString(),
-          total_duration_minutes: durationMinutes,
-          estimated_calories_burned: workout.estimatedCaloriesBurned,
-          total_volume: Math.round(totalVolume),
-        })
+        .insert(workoutRow)
         .select()
         .single()
-      if (workoutError) throw workoutError
 
       const logs = sets.map((s) => ({
-        workout_id: workoutRecord.id,
+        workout_id: workoutId,
         user_id: user!.id,
         exercise_name: s.exerciseName,
         primary_muscle: s.primaryMuscle,
@@ -91,6 +120,15 @@ export function useWorkout() {
         met_value: s.metValue,
       }))
 
+      if (workoutError) {
+        // Offline fallback — queue workout + all logs for sync when back online
+        await enqueueItem({ type: 'workout', data: workoutRow, created_at: Date.now() })
+        for (const log of logs) {
+          await enqueueItem({ type: 'exercise_log', data: log, created_at: Date.now() })
+        }
+        return workoutRow as unknown as Workout
+      }
+
       const { error: logsError } = await supabase.from('exercise_logs').insert(logs)
       if (logsError) throw logsError
 
@@ -102,5 +140,5 @@ export function useWorkout() {
     },
   })
 
-  return { todayWorkout, generateWorkout, saveWorkout }
+  return { todayWorkout, generateWorkout, saveWorkout, recentExercises }
 }
