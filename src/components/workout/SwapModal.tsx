@@ -86,17 +86,19 @@ export default function SwapModal({ exercise, onSwap, onClose }: SwapModalProps)
     return () => { cancelled = true }
   }, [exercise.name, exercise.primaryMuscle])
 
-  // Prefer ExerciseDB results; fall back to the AI-generated alternatives
-  // embedded in the workout when ExerciseDB is unavailable or returns nothing.
-  const allAlternatives: ExerciseAlternative[] =
-    dbAlts.length > 0
-      ? dbAlts.map((e) => ({
-          name: e.name,
-          reason: `${e.target} · ${e.equipment}`,
-          gifUrl: e.gifUrl,
-          equipment: e.equipment,
-        }))
-      : (exercise.alternatives ?? [])
+  // Merge ExerciseDB results with AI-generated alternatives, deduplicated by name.
+  // ExerciseDB entries come first (they have GIFs); AI alternatives fill the rest.
+  const dbMapped: ExerciseAlternative[] = dbAlts.map((e) => ({
+    name: e.name,
+    reason: `${e.target} · ${e.equipment}`,
+    gifUrl: e.gifUrl,
+    equipment: e.equipment,
+  }))
+  const dbNames = new Set(dbMapped.map((a) => a.name.toLowerCase()))
+  const aiOnly = (exercise.alternatives ?? []).filter(
+    (a) => !dbNames.has(a.name.toLowerCase())
+  )
+  const allAlternatives: ExerciseAlternative[] = [...dbMapped, ...aiOnly]
 
   return (
     <div className="fixed inset-0 z-50 flex items-end">

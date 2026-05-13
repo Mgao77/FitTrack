@@ -18,7 +18,7 @@ import PostWorkoutSummary from '../components/workout/PostWorkoutSummary'
 
 interface ScreenDef {
   label: string
-  render: () => React.ReactElement
+  render: (goBack?: () => void) => React.ReactElement
 }
 
 const SCREENS: ScreenDef[] = [
@@ -104,9 +104,10 @@ const SCREENS: ScreenDef[] = [
   },
   {
     label: 'Meal Logger',
-    render: () => (
+    // render receives a goBack callback so the X button actually works
+    render: (goBack?: () => void) => (
       <DevProviders>
-        <MealLogger onClose={() => {}} />
+        <MealLogger onClose={goBack ?? (() => {})} />
       </DevProviders>
     ),
   },
@@ -132,17 +133,18 @@ export default function DevNavigator() {
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const ActiveScreen = SCREENS[activeIndex].render
-
   function selectScreen(index: number) {
     setActiveIndex(index)
     setOpen(false)
   }
 
+  // goBack navigates to Today (index 0) — used by screens with a close button
+  const goBack = () => selectScreen(0)
+
   return (
     <div style={{ position: 'relative', width: '100%', minHeight: '100dvh' }}>
       {/* Rendered screen */}
-      <ActiveScreen />
+      {SCREENS[activeIndex].render(goBack)}
 
       {/* Overlay when picker is open */}
       {open && (

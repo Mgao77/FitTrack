@@ -71,8 +71,14 @@ export const mockGeneratedWorkout: GeneratedWorkout = {
       metValue: 6.0,
       youtubeSearchQuery: 'barbell bench press form tutorial',
       alternatives: [
-        { name: 'Dumbbell Bench Press', reason: 'No barbell available' },
+        { name: 'Dumbbell Bench Press', reason: 'Free weight variation' },
+        { name: 'Incline Dumbbell Press', reason: 'Upper chest focus' },
+        { name: 'Cable Fly', reason: 'Constant tension throughout' },
+        { name: 'Pec Deck Machine', reason: 'Isolation on chest' },
+        { name: 'Smith Machine Bench Press', reason: 'Fixed bar path' },
         { name: 'Push-ups', reason: 'Bodyweight alternative' },
+        { name: 'Dips', reason: 'Lower chest emphasis' },
+        { name: 'Dumbbell Fly', reason: 'Chest stretch and squeeze' },
       ],
     },
     {
@@ -89,6 +95,12 @@ export const mockGeneratedWorkout: GeneratedWorkout = {
       alternatives: [
         { name: 'Lat Pulldown', reason: 'Assisted machine option' },
         { name: 'Resistance Band Pull-ups', reason: 'Easier regression' },
+        { name: 'Cable Pullover', reason: 'Lat isolation' },
+        { name: 'Assisted Pull-up Machine', reason: 'Controlled assistance' },
+        { name: 'Neutral Grip Pull-ups', reason: 'Easier on wrists' },
+        { name: 'Single Arm Lat Pulldown', reason: 'Unilateral focus' },
+        { name: 'Straight Arm Pulldown', reason: 'Lat stretch and activation' },
+        { name: 'TRX Row', reason: 'Bodyweight horizontal option' },
       ],
     },
     {
@@ -103,8 +115,14 @@ export const mockGeneratedWorkout: GeneratedWorkout = {
       metValue: 7.0,
       youtubeSearchQuery: 'barbell back squat tutorial form',
       alternatives: [
-        { name: 'Goblet Squat', reason: 'Lighter load option' },
+        { name: 'Goblet Squat', reason: 'Lighter load, great form cue' },
         { name: 'Leg Press', reason: 'Machine alternative' },
+        { name: 'Bulgarian Split Squat', reason: 'Unilateral strength' },
+        { name: 'Hack Squat', reason: 'Machine quad focus' },
+        { name: 'Dumbbell Squat', reason: 'Free weight alternative' },
+        { name: 'Front Squat', reason: 'Quad dominant variation' },
+        { name: 'Box Squat', reason: 'Posterior chain emphasis' },
+        { name: 'Wall Sit', reason: 'Isometric bodyweight option' },
       ],
     },
     {
@@ -121,6 +139,12 @@ export const mockGeneratedWorkout: GeneratedWorkout = {
       alternatives: [
         { name: 'Dumbbell Shoulder Press', reason: 'Unilateral option' },
         { name: 'Arnold Press', reason: 'Greater range of motion' },
+        { name: 'Seated Dumbbell Press', reason: 'Reduces lower back load' },
+        { name: 'Machine Shoulder Press', reason: 'Guided path, good for beginners' },
+        { name: 'Push Press', reason: 'Power variation with leg drive' },
+        { name: 'Landmine Press', reason: 'Shoulder-friendly angle' },
+        { name: 'Cable Lateral Raise', reason: 'Side delt isolation' },
+        { name: 'Pike Push-up', reason: 'Bodyweight shoulder press' },
       ],
     },
   ],
